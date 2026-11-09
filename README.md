@@ -10,10 +10,8 @@ Built by **Team KavachX**:
 
 | Member | Role |
 |---|---|
-| Supratim Roy | Team lead; backend, API security and audit architecture |
-| Swastik Mitra | Computer vision; detection, tracking and ANPR pipeline |
-| Sunanda Samanta | Frontend and operator dashboard |
-| Elora Pradhan | Research, documentation and testing |
+| Swastik Mitra | Team leader; computer vision, detection, tracking and ANPR pipeline |
+| Sunanda Samanta | Team member; frontend and operator dashboard |
 
 Originally built for Smart India Hackathon 2026, problem statement **SIH26187** (Ministry of Home Affairs / Sashastra Seema Bal). The repo is codenamed `sentinel-grid`.
 
