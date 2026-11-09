@@ -4,7 +4,7 @@
 
 IBVAP adds detection, tracking, behaviour alerts and a tamper-evident evidence trail to existing CCTV/RTSP feeds. No new camera hardware is needed.
 
-**Live demo:** _link added after deployment_
+**Live demo:** https://ibvap-rdie.onrender.com  (database viewer: https://ibvap-rdie.onrender.com/db-viewer). Ask the team for the API key. The free server sleeps when idle, so the first load can take up to a minute.
 
 Built by **Team KavachX**:
 
