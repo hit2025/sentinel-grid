@@ -1,0 +1,29 @@
+# Render Blueprint for IBVAP -- see RENDER_DEPLOYMENT.md for the full guide
+# and, importantly, the honest explanation of free-tier storage limits
+# before you rely on this for a live jury demo.
+#
+# Usage: push this repo to GitHub, then in the Render dashboard:
+#   New -> Blueprint -> connect this repo -> Apply
+# Render auto-detects this file and creates the service below.
+
+services:
+  - type: web
+    name: ibvap
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # Auto-generates a random, secure key at deploy time -- do NOT
+      # replace this with the local dev default once this is public.
+      - key: IBVAP_API_KEY
+        generateValue: true
+      # Lower than the 500MB local default: free tier's disk is small
+      # AND ephemeral (wiped on every sleep/wake cycle), so reserving
+      # more than this buys nothing.
+      - key: IBVAP_MAX_SNAPSHOT_MB
+        value: "200"
+      - key: PYTHON_VERSION
+        value: "3.12.0"

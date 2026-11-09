@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IBVAP — Database Viewer</title>
+<style>
+  :root{
+    --bg:#090d14; --panel:#0f1520; --panel-2:#141b28; --line:#1e2837;
+    --amber:#e0a840; --teal:#2dd4bf; --green:#34d399; --red:#f87171;
+    --text:#e8ecf3; --text-dim:#8794a8; --text-faint:#4d5868;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;
+    font-size:13px;
+  }
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 22px; border-bottom:1px solid var(--line);
+    background:var(--panel);
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .mark{width:22px; height:22px; border-radius:50%; background:conic-gradient(from 0deg, var(--amber), transparent 65%); position:relative;}
+  .mark::after{content:"";position:absolute;inset:5px;background:var(--panel);border-radius:50%;}
+  .brand .name{font-family:'Segoe UI',sans-serif; font-weight:700; font-size:16px;}
+  .brand .sub{color:var(--text-dim); font-size:11px;}
+  a.back-link{color:var(--teal); text-decoration:none; font-size:11.5px; border:1px solid #1a6f66; padding:5px 12px; border-radius:6px;}
+  a.back-link:hover{background:rgba(45,212,191,0.1);}
+
+  main{padding:20px 24px; max-width:1400px; margin:0 auto;}
+
+  .verify-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px;}
+  .vcard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;}
+  .vcard .label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.04em;}
+  .vcard .value{font-family:'Segoe UI',sans-serif;font-size:22px;font-weight:700;margin-top:5px;}
+  .value.ok{color:var(--teal);} .value.bad{color:var(--red);}
+  .vcard .detail{font-size:10px;color:var(--text-faint);margin-top:5px;}
+
+  section{margin-bottom:26px;}
+  h2{
+    font-family:'Segoe UI',sans-serif; font-size:14px; margin:0 0 4px;
+    display:flex; align-items:center; gap:10px;
+  }
+  h2 .tag{font-size:10px; color:var(--amber); border:1px solid #7c5f2e; padding:2px 8px; border-radius:3px; background:rgba(224,168,64,0.08);}
+  .path{color:var(--text-faint); font-size:10.5px; margin-bottom:8px;}
+  .table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:6px;}
+  table{width:100%; border-collapse:collapse; background:var(--panel); min-width:600px;}
+  th{
+    background:var(--panel-2); text-align:left; padding:7px 10px; font-size:10px;
+    color:var(--text-dim); border-bottom:1px solid var(--line); text-transform:uppercase;
+    letter-spacing:0.03em; white-space:nowrap; position:sticky; top:0;
+  }
+  td{padding:6px 10px; border-bottom:1px solid var(--line); font-size:11px; white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,0.02);}
+  .sev{font-size:9px; font-weight:700; padding:1px 6px; border-radius:2px; color:#0a0d0f;}
+  .sev.critical{background:var(--red);} .sev.high{background:#fb923c;} .sev.medium{background:var(--amber);} .sev.low{background:#8794a8;}
+  .hash{color:var(--teal);}
+  .empty-note{color:var(--text-faint); font-size:11px; padding:14px; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:6px;}
+  .refresh-note{color:var(--text-faint); font-size:10.5px; text-align:right; margin-bottom:10px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(5,7,10,0.88);display:none;align-items:center;justify-content:center;z-index:1000;}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:#0d1420;border:1px solid var(--line);border-radius:10px;width:420px;max-width:92vw;padding:22px;}
+  .modal-box h3{margin:0 0 4px;font-family:'Segoe UI',sans-serif;font-size:16px;}
+  .modal-box .sub{color:var(--text-dim);font-size:11.5px;margin-bottom:14px;}
+  .modal-box input{
+    width:100%; box-sizing:border-box; padding:9px 10px; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:6px; color:var(--text); font-family:'Consolas',monospace; font-size:13px;
+  }
+  .modal-box button{
+    margin-top:12px; width:100%; padding:9px; background:var(--panel-2); border:1px solid #1a6f66;
+    color:var(--teal); border-radius:6px; cursor:pointer; font-family:'Consolas',monospace; font-size:13px; font-weight:600;
+  }
+  .modal-box button:hover{background:rgba(45,212,191,0.1);}
+  #keyError{display:none;margin-top:10px;color:var(--red);font-size:12px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark"></div>
+    <span class="name">IBVAP</span>
+    <span class="sub">Database Viewer &middot; SIH26187 &middot; read-only</span>
+  </div>
+  <a class="back-link" href="/">&larr; Back to Dashboard</a>
+</header>
+
+<main>
+  <div class="verify-cards" id="verifyCards">
+    <div class="vcard"><div class="label">Overall</div><div class="value" id="vOverall">&mdash;</div><div class="detail" id="vOverallDetail">loading&hellip;</div></div>
+    <div class="vcard"><div class="label">Hash Chain</div><div class="value" id="vChain">&mdash;</div><div class="detail" id="vChainDetail"></div></div>
+    <div class="vcard"><div class="label">Row Integrity</div><div class="value" id="vIntegrity">&mdash;</div><div class="detail" id="vIntegrityDetail"></div></div>
+  </div>
+
+  <div class="refresh-note" id="refreshNote">auto-refreshing every 5s</div>
+
+  <section>
+    <h2><span class="tag">SQLite</span> alerts <span id="alertsCount" style="color:var(--text-dim);font-weight:normal;"></span></h2>
+    <div class="path">SELECT * FROM alerts ORDER BY id DESC LIMIT 50</div>
+    <div class="table-wrap"><table id="tblAlerts"><thead><tr>
+      <th>id</th><th>type</th><th>severity</th><th>message</th><th>camera</th><th>track_ids</th><th>ack</th><th>audit_id</th><th>snapshot</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <h2><span class="tag">SQLite</span> events <span id="eventsCount" style="color:var(--text-dim);font-weight:normal;"></span></h2>
+    <div class="path">SELECT * FROM events ORDER BY id DESC LIMIT 50</div>
+    <div class="table-wrap"><table id="tblEvents"><thead><tr>
+      <th>id</th><th>type</th><th>camera</th><th>details</th><th>audit_id</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <h2><span class="tag">VIEW</span> audit_trail_readable <span id="auditCount" style="color:var(--text-dim);font-weight:normal;"></span></h2>
+    <div class="path">SELECT * FROM audit_trail_readable ORDER BY id DESC LIMIT 50 &nbsp;&mdash;&nbsp; hash chain, human-readable</div>
+    <div class="table-wrap"><table id="tblAudit"><thead><tr>
+      <th>id</th><th>record_type</th><th>payload_preview</th><th>logged_at</th><th>prev_hash</th><th>hash</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <h2><span class="tag">SQLite</span> session_stats <span id="statsCount" style="color:var(--text-dim);font-weight:normal;"></span></h2>
+    <div class="path">SELECT * FROM session_stats ORDER BY id DESC LIMIT 50</div>
+    <div class="table-wrap"><table id="tblStats"><thead><tr>
+      <th>id</th><th>camera</th><th>timestamp</th><th>people</th><th>vehicles</th><th>night</th><th>frame</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+
+<div class="modal-overlay" id="apiKeyGate">
+  <div class="modal-box">
+    <h3>&#x1F511; API Key Required</h3>
+    <div class="sub">Same key as the main dashboard.</div>
+    <input type="password" id="apiKeyInput" placeholder="API key" autocomplete="off" />
+    <button id="apiKeySubmit">Connect</button>
+    <div id="keyError"></div>
+  </div>
+</div>
+
+<script>
+const HTTP_BASE = window.location.origin;
+let API_KEY = sessionStorage.getItem('ibvap_api_key') || '';
+
+const _nativeFetch = window.fetch;
+window.fetch = function(input, init){
+  const url = typeof input === 'string' ? input : input.url;
+  if (url && url.includes('/api/')) {
+    init = init || {};
+    init.headers = Object.assign({}, init.headers, { 'X-API-Key': API_KEY });
+  }
+  return _nativeFetch(input, init);
+};
+
+function esc(s){
+  return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function renderVerify(v){
+  const vOverall = document.getElementById('vOverall');
+  vOverall.textContent = v.ok ? 'VERIFIED' : 'TAMPERED';
+  vOverall.className = 'value ' + (v.ok ? 'ok' : 'bad');
+  document.getElementById('vOverallDetail').textContent = `ok: ${v.ok}`;
+
+  const vChain = document.getElementById('vChain');
+  vChain.textContent = v.chain.chain_intact ? 'INTACT' : 'BROKEN';
+  vChain.className = 'value ' + (v.chain.chain_intact ? 'ok' : 'bad');
+  document.getElementById('vChainDetail').textContent =
+    `records_checked: ${v.chain.records_checked} · broken_at_id: ${v.chain.broken_at_id ?? 'null'}`;
+
+  const flagged = v.integrity.tampered_alert_ids.length + v.integrity.tampered_event_ids.length;
+  const vIntegrity = document.getElementById('vIntegrity');
+  vIntegrity.textContent = `${flagged} FLAGGED`;
+  vIntegrity.className = 'value ' + (flagged === 0 ? 'ok' : 'bad');
+  document.getElementById('vIntegrityDetail').textContent =
+    `tampered_alert_ids: [${v.integrity.tampered_alert_ids.join(', ')}]`;
+}
+
+function renderTable(id, rows, rowFn){
+  const tbody = document.querySelector(`#${id} tbody`);
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="20" style="text-align:center;color:var(--text-faint);padding:14px;">No rows yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(rowFn).join('');
+}
+
+async function loadAll(){
+  try {
+    const [alerts, events, audit, stats, verify] = await Promise.all([
+      fetch(`${HTTP_BASE}/api/alerts?limit=50`).then(r => r.json()),
+      fetch(`${HTTP_BASE}/api/events?limit=50`).then(r => r.json()),
+      fetch(`${HTTP_BASE}/api/db/audit_log?limit=50`).then(r => r.json()),
+      fetch(`${HTTP_BASE}/api/db/session_stats?limit=50`).then(r => r.json()),
+      fetch(`${HTTP_BASE}/api/audit/verify`).then(r => r.json()),
+    ]);
+
+    renderVerify(verify);
+
+    document.getElementById('alertsCount').textContent = `(${alerts.length} shown)`;
+    renderTable('tblAlerts', alerts, a => `<tr>
+      <td>${a.id}</td><td>${esc(a.alert_type)}</td>
+      <td><span class="sev ${a.severity}">${esc(a.severity)}</span></td>
+      <td style="white-space:normal;min-width:220px;">${esc(a.message)}</td>
+      <td>${esc(a.camera_id)}</td><td>${esc(a.track_ids)}</td>
+      <td>${a.acknowledged ? '&#10003;' : '&mdash;'}</td>
+      <td>${a.audit_id ?? '&mdash;'}</td>
+      <td class="hash">${a.snapshot_hash ? a.snapshot_hash.slice(0,10)+'…' : '&mdash;'}</td>
+    </tr>`);
+
+    document.getElementById('eventsCount').textContent = `(${events.length} shown)`;
+    renderTable('tblEvents', events, e => `<tr>
+      <td>${e.id}</td><td>${esc(e.event_type)}</td><td>${esc(e.camera_id)}</td>
+      <td style="white-space:normal;min-width:260px;">${esc(e.details)}</td>
+      <td>${e.audit_id ?? '&mdash;'}</td>
+    </tr>`);
+
+    document.getElementById('auditCount').textContent = `(${audit.length} shown)`;
+    renderTable('tblAudit', audit, a => `<tr>
+      <td>${a.id}</td><td>${esc(a.record_type)}</td>
+      <td style="white-space:normal;min-width:260px;">${esc(a.payload_preview)}</td>
+      <td>${esc(a.logged_at)}</td>
+      <td class="hash">${esc(a.prev_hash_short)}</td>
+      <td class="hash">${esc(a.hash_short)}</td>
+    </tr>`);
+
+    document.getElementById('statsCount').textContent = `(${stats.length} shown)`;
+    renderTable('tblStats', stats, s => `<tr>
+      <td>${s.id}</td><td>${esc(s.camera_id)}</td><td>${s.timestamp?.toFixed ? s.timestamp.toFixed(1) : s.timestamp}</td>
+      <td>${s.people_count}</td><td>${s.vehicle_count}</td>
+      <td>${s.night_mode ? '&#10003;' : '&mdash;'}</td><td>${s.frame_index}</td>
+    </tr>`);
+  } catch (e) {
+    console.error('DB viewer load failed', e);
+  }
+}
+
+async function tryKey(key){
+  const errEl = document.getElementById('keyError');
+  const btn = document.getElementById('apiKeySubmit');
+  btn.disabled = true;
+  errEl.style.display = 'none';
+  API_KEY = key;
+  try {
+    const res = await fetch(`${HTTP_BASE}/api/audit/verify`);
+    if (res.status === 401) {
+      errEl.textContent = 'Incorrect API key.';
+      errEl.style.display = 'block';
+      API_KEY = '';
+      btn.disabled = false;
+      return;
+    }
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server.';
+    errEl.style.display = 'block';
+    API_KEY = '';
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+  sessionStorage.setItem('ibvap_api_key', key);
+  document.getElementById('apiKeyGate').classList.remove('open');
+  loadAll();
+  setInterval(loadAll, 5000);
+}
+
+document.getElementById('apiKeySubmit').addEventListener('click', () => {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (val) tryKey(val);
+});
+document.getElementById('apiKeyInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('apiKeySubmit').click();
+});
+
+document.getElementById('apiKeyGate').classList.add('open');
+if (API_KEY) document.getElementById('apiKeyInput').value = API_KEY;
+document.getElementById('apiKeyInput').focus();
+if (API_KEY) tryKey(API_KEY);
+</script>
+</body>
+</html>

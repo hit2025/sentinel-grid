@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: sentinelgrid-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/../data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: sentinelgrid-frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -1,0 +1,31 @@
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+python-multipart==0.0.20
+aiofiles==24.1.0
+opencv-python-headless==4.13.0.92
+numpy>=1.26,<3
+scipy>=1.11
+scikit-learn>=1.4
+pydantic>=2.6
+pytesseract>=0.3.10   # ANPR OCR -- requires the tesseract-ocr system package
+                      # (apt-get install tesseract-ocr on Debian/Ubuntu)
+pytest>=8.0            # for running tests/test_core.py
+
+# RECOMMENDED: install this for real accuracy on real footage. The offline
+# HOG/MOG2 fallback below is a "runs anywhere, no GPU, no download" floor
+# for guaranteed demo reliability, not the accuracy target -- on real
+# outdoor video (wind-blown trees, shadows, texture) MOG2's blob heuristic
+# produces real false positives (measured: ~48 spurious "vehicle" IDs on
+# one real test clip, dropping to ~13 with YOLOv8 enabled). Auto-detected
+# at runtime -- no code changes needed, but see the CRITICAL note below.
+# ultralytics>=8.2
+#
+# CRITICAL: ultralytics installs its own "opencv-python" package, which
+# conflicts with "opencv-python-headless" above and silently breaks cv2
+# (specifically cv2.CascadeClassifier, used by face detection and ANPR --
+# fails with "module 'cv2' has no attribute 'CascadeClassifier'"). This
+# is not a maybe -- it happens on every fresh install. After installing
+# ultralytics, ALWAYS immediately run:
+#   pip install --force-reinstall opencv-python-headless==4.13.0.92
+# Use setup.bat / setup.sh in this folder to do the whole sequence
+# correctly in one step instead of doing this by hand.

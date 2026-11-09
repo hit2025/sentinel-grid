@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBVAP — Intelligent Border Video Analytics Platform</title>
+<style>
+  :root{
+    --bg:#090d14;
+    --panel:#0f1520;
+    --panel-2:#141b28;
+    --line:#1e2837;
+    --amber:#e0a840;
+    --amber-dim:#7c5f2e;
+    --teal:#2dd4bf;
+    --teal-dim:#1a6f66;
+    --green:#34d399;
+    --red:#f87171;
+    --orange:#fb923c;
+    --night:#c084fc;
+    --text:#e8ecf3;
+    --text-dim:#8794a8;
+    --text-faint:#4d5868;
+    --radius:4px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(224,168,64,0.05), transparent 42%),
+      radial-gradient(circle at 88% 100%, rgba(45,212,191,0.04), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Consolas', 'SFMono-Regular', 'Courier New', monospace;
+    font-size:13px;
+    line-height:1.5;
+  }
+  h1,h2,h3,.display{
+    font-family:'Segoe UI', 'Arial Narrow', sans-serif;
+    font-weight:700;
+    letter-spacing:0.01em;
+    margin:0;
+  }
+  a{color:var(--amber);}
+  button{font:inherit;}
+
+  /* ---- layout shell ---- */
+  .shell{
+    display:grid;
+    grid-template-rows:56px 1fr;
+    height:100vh;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 20px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, #111928, #0c111c);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:26px;height:26px;border-radius:50%;
+    background:conic-gradient(from 0deg, var(--amber), transparent 65%);
+    position:relative;
+  }
+  .brand .mark::after{
+    content:"";position:absolute;inset:7px;
+    background:var(--bg);border-radius:50%;
+  }
+  .brand .name{font-size:19px;letter-spacing:0.02em;}
+  .brand .sub{color:var(--text-dim);font-size:11px;letter-spacing:0.04em;margin-left:6px;}
+  .team-badge{
+    background:rgba(45,212,191,0.08);border:1px solid var(--teal-dim);color:var(--teal);
+    font-size:10.5px;padding:3px 10px;border-radius:12px;letter-spacing:0.04em;margin-left:12px;
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;font-weight:600;
+  }
+
+  .status-cluster{display:flex;align-items:center;gap:18px;font-size:12px;color:var(--text-dim);}
+  .status-cluster .dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--text-faint);margin-right:6px;
+  }
+  .status-cluster .dot.live{background:var(--green);box-shadow:0 0 6px var(--green);}
+  .status-cluster .dot.down{background:var(--red);}
+
+  main{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 360px;
+    grid-template-rows:1fr auto;
+    grid-template-areas:
+      "feed   alerts"
+      "stats  alerts";
+    gap:1px;
+    background:var(--line);
+    overflow:hidden;
+  }
+
+  section{background:var(--panel);}
+
+  /* ---- feed panel ---- */
+  .feed-panel{grid-area:feed;display:flex;flex-direction:column;min-height:0;}
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 16px;border-bottom:1px solid var(--line);
+    font-size:11px;color:var(--text-dim);letter-spacing:0.03em;gap:10px;
+  }
+  .panel-head .title{color:var(--text);font-size:13px;font-family:'Segoe UI','Arial Narrow',sans-serif;font-weight:600;letter-spacing:0.02em;}
+  .source-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .src-btn{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;font-size:11px;padding:6px 10px;border-radius:var(--radius);
+    cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,color .15s;
+  }
+  .src-btn:hover{border-color:var(--amber-dim);color:var(--text);}
+  .src-btn.active{border-color:var(--amber);color:var(--amber);}
+  .src-btn.busy{opacity:0.55;pointer-events:none;}
+  .icon-btn{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);
+    height:28px;padding:0 10px;border-radius:var(--radius);cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;font-size:11px;
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;
+    transition:border-color .15s,color .15s;flex:none;white-space:nowrap;
+  }
+  .icon-btn:hover{border-color:var(--amber-dim);color:var(--text);}
+  .icon-btn.muted{color:var(--text-faint);}
+  .icon-btn.paused{border-color:var(--orange);color:var(--orange);}
+  .icon-btn.danger{border-color:#7c3030;color:var(--red);}
+  .icon-btn.danger:hover{background:rgba(248,113,113,0.1);border-color:var(--red);}
+  .feed-wrap{
+    flex:1;position:relative;display:flex;align-items:center;justify-content:center;
+    background:#050709;min-height:0;
+  }
+  .feed-wrap img{max-width:100%;max-height:100%;display:block;}
+  .feed-hud{
+    position:absolute;top:10px;left:10px;
+    display:flex;gap:10px;flex-wrap:wrap;
+  }
+  .chip{
+    background:rgba(9,13,20,0.78);border:1px solid var(--line);
+    padding:4px 10px;border-radius:var(--radius);font-size:11px;color:var(--text-dim);
+    backdrop-filter:blur(2px);
+  }
+  .chip b{color:var(--amber);font-weight:600;}
+  .feed-empty{color:var(--text-faint);font-size:12px;text-align:center;padding:30px;}
+  .paused-banner{
+    position:absolute;top:10px;right:10px;background:rgba(251,146,60,0.12);
+    border:1px solid var(--orange);color:var(--orange);padding:4px 10px;
+    border-radius:var(--radius);font-size:11px;letter-spacing:0.03em;display:none;
+  }
+
+  /* ---- stats strip ---- */
+  .stats-panel{grid-area:stats;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);}
+  .stat{
+    padding:12px 16px;border-right:1px solid var(--line);
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .stat:nth-child(4n){border-right:none;}
+  .stat:nth-child(-n+4){border-bottom:1px solid var(--line);}
+  .stat .label{color:var(--text-dim);font-size:10px;letter-spacing:0.03em;}
+  .stat .value{font-family:'Segoe UI','Arial Narrow',sans-serif;font-size:23px;font-weight:700;color:var(--text);}
+  .stat .value.amber{color:var(--amber);}
+  .stat .value.red{color:var(--red);}
+  .stat .value.teal{color:var(--teal);}
+  .stat .sub{font-size:10px;color:var(--text-faint);}
+
+  /* ---- alerts rail ---- */
+  .alerts-panel{grid-area:alerts;display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line);}
+  .alerts-panel .panel-head .tools{display:flex;gap:6px;align-items:center;}
+  .filter-row{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .filter-chip{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);
+    font-size:10px;padding:4px 11px;border-radius:12px;cursor:pointer;
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;
+    transition:border-color .15s,color .15s,background .15s;
+  }
+  .filter-chip:hover{color:var(--text);}
+  .filter-chip.active{border-color:var(--amber);color:var(--amber);background:rgba(224,168,64,0.08);}
+  #sparkline{display:block;width:100%;height:36px;border-bottom:1px solid var(--line);}
+  .alert-list{flex:1;overflow-y:auto;padding:8px;}
+  .alert-list::-webkit-scrollbar{width:6px;}
+  .alert-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+  .alert-card{
+    border:1px solid var(--line);border-left:3px solid var(--text-faint);
+    background:var(--panel-2);
+    border-radius:var(--radius);
+    padding:9px 11px;margin-bottom:7px;
+    animation:slideIn 0.25s ease-out;
+  }
+  @keyframes slideIn{from{opacity:0;transform:translateX(8px);}to{opacity:1;transform:translateX(0);}}
+  .alert-card.critical{border-left-color:var(--red);}
+  .alert-card.high{border-left-color:var(--orange);}
+  .alert-card.medium{border-left-color:var(--amber);}
+  .alert-card .row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .sev-tag{
+    font-size:9.5px;font-weight:600;letter-spacing:0.04em;
+    padding:1px 6px;border-radius:2px;color:#0a0d0f;
+  }
+  .sev-tag.critical{background:var(--red);}
+  .sev-tag.high{background:var(--orange);}
+  .sev-tag.medium{background:var(--amber);}
+  .alert-card .time{color:var(--text-faint);font-size:10.5px;}
+  .alert-card .msg{color:var(--text);font-size:12px;line-height:1.4;}
+  .alert-card .meta{color:var(--text-dim);font-size:10.5px;margin-top:3px;display:flex;justify-content:space-between;align-items:center;gap:6px;}
+  .alert-card.acked{opacity:0.55;}
+  .ack-btn{
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;font-size:9.5px;
+    padding:2px 7px;border-radius:10px;cursor:pointer;flex:none;white-space:nowrap;
+  }
+  .ack-btn:hover{border-color:var(--teal);color:var(--teal);}
+  .evidence-btn, .report-btn{
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;font-size:9.5px;
+    padding:2px 7px;border-radius:10px;cursor:pointer;flex:none;white-space:nowrap;
+    text-decoration:none;display:inline-block;
+  }
+  .evidence-btn:hover{border-color:var(--amber);color:var(--amber);}
+  .report-btn:hover{border-color:var(--gold,#d4af37);color:#d4af37;}
+  .ack-tag{font-size:9.5px;color:var(--teal);flex:none;white-space:nowrap;}
+  .alerts-empty{color:var(--text-faint);font-size:12px;padding:18px 12px;text-align:center;}
+
+  .legend{display:flex;gap:12px;padding:9px 14px;border-top:1px solid var(--line);font-size:10.5px;color:var(--text-dim);flex-wrap:wrap;}
+  .legend span{display:flex;align-items:center;gap:5px;}
+  .legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+
+  @media (max-width: 900px){
+    main{grid-template-columns:1fr;grid-template-areas:"feed" "alerts" "stats";}
+    .stats-panel{grid-template-columns:repeat(2,1fr);}
+    .stat:nth-child(4n){border-right:1px solid var(--line);}
+    .stat:nth-child(2n){border-right:none;}
+    .stat:nth-child(-n+4){border-bottom:none;}
+    .stat:nth-child(-n+6){border-bottom:1px solid var(--line);}
+    .alerts-panel{border-left:none;border-top:1px solid var(--line);max-height:340px;}
+  }
+
+  /* ---- tamper-evidence demo modal ---- */
+  .audit-btn{
+    background:var(--panel-2);border:1px solid var(--teal-dim);color:var(--teal);
+    font-family:'Consolas','SFMono-Regular','Courier New',monospace;font-size:11px;
+    padding:6px 12px;border-radius:var(--radius);cursor:pointer;font-weight:600;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .audit-btn:hover{background:rgba(45,212,191,0.1);}
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(5,7,10,0.82);
+    display:none;align-items:flex-start;justify-content:center;
+    z-index:1000;padding:4vh 20px;overflow-y:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:var(--navy, var(--panel));background:#0d1420;
+    border:1px solid var(--line);border-radius:10px;
+    width:920px;max-width:100%;padding:0;
+  }
+  .modal-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 22px;border-bottom:1px solid var(--line);
+  }
+  .modal-head h3{margin:0;font-family:'Segoe UI',sans-serif;font-size:17px;color:var(--text);}
+  .modal-head .sub{color:var(--text-dim);font-size:11.5px;margin-top:3px;}
+  .modal-close{
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;flex:none;
+  }
+  .modal-close:hover{color:var(--text);border-color:var(--amber-dim);}
+  .modal-body{padding:20px 22px;}
+
+  .verify-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .vcard{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;}
+  .vcard .label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.04em;}
+  .vcard .value{font-family:'Segoe UI',sans-serif;font-size:22px;font-weight:700;margin-top:5px;}
+  .value.ok{color:var(--teal);} .value.bad{color:var(--red, #f87171);}
+  .vcard .detail{font-size:10px;color:var(--text-faint);margin-top:5px;line-height:1.4;}
+
+  .demo-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+  .demo-btn{
+    flex:1;min-width:220px;border-radius:8px;padding:12px 14px;cursor:pointer;
+    font-family:'Segoe UI',sans-serif;text-align:left;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--text);
+  }
+  .demo-btn .t{font-size:12.5px;font-weight:700;display:block;margin-bottom:3px;}
+  .demo-btn .d{font-size:10.5px;color:var(--text-dim);font-family:'Consolas',monospace;}
+  .demo-btn.seed{border-color:var(--teal-dim);} .demo-btn.seed .t{color:var(--teal);}
+  .demo-btn.atk1{border-color:#7c5f2e;} .demo-btn.atk1 .t{color:var(--amber);}
+  .demo-btn.atk2{border-color:#7c3030;} .demo-btn.atk2 .t{color:#f87171;}
+  .demo-btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .demo-btn:not(:disabled):hover{filter:brightness(1.15);}
+
+  .demo-log{
+    background:#080b10;border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px;max-height:220px;overflow-y:auto;
+    font-family:'Consolas',monospace;font-size:11px;color:var(--text-dim);
+  }
+  .demo-log .entry{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+  .demo-log .entry:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .demo-log .entry .ts{color:var(--text-faint);}
+  .demo-log .entry .title{color:var(--text);font-weight:700;}
+  .demo-log pre{margin:4px 0 0;white-space:pre-wrap;word-break:break-word;color:var(--text-dim);}
+
+  /* ---- multi-camera grid view ---- */
+  .grid-overlay{
+    position:fixed;inset:0;background:var(--bg,#090d14);
+    display:none;flex-direction:column;z-index:900;padding:18px 22px;
+  }
+  .grid-overlay.open{display:flex;}
+  .grid-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .grid-head h3{margin:0;font-family:'Segoe UI',sans-serif;font-size:16px;color:var(--text);}
+  .grid-cells{
+    flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
+    gap:14px;min-height:0;
+  }
+  .grid-cell{
+    background:var(--panel,#0f1520);border:1px solid var(--line,#1e2837);border-radius:8px;
+    display:flex;flex-direction:column;overflow:hidden;min-height:0;
+  }
+  .grid-cell .gc-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:7px 10px;border-bottom:1px solid var(--line,#1e2837);flex:none;
+  }
+  .grid-cell .gc-head .gc-name{font-family:'Consolas',monospace;font-size:11.5px;color:var(--text,#e8ecf3);font-weight:600;}
+  .grid-cell .gc-head .gc-stats{font-family:'Consolas',monospace;font-size:10.5px;color:var(--text-dim,#8794a8);}
+  .grid-cell .gc-dot{width:6px;height:6px;border-radius:50%;background:#4d5868;display:inline-block;margin-right:5px;}
+  .grid-cell .gc-dot.live{background:#34d399;box-shadow:0 0 5px #34d399;}
+  .grid-cell .gc-img-wrap{flex:1;background:#000;display:flex;align-items:center;justify-content:center;min-height:0;}
+  .grid-cell img{max-width:100%;max-height:100%;object-fit:contain;}
+  .grid-cell .gc-placeholder{color:var(--text-faint,#4d5868);font-size:11px;font-family:'Consolas',monospace;}
+
+  /* ---- zone/line calibration ---- */
+  #zoneCanvas{position:absolute;inset:0;cursor:crosshair;display:none;}
+  #zoneCanvas.active{display:block;}
+  .calib-panel{
+    position:absolute;bottom:10px;left:10px;right:10px;
+    background:rgba(9,13,20,0.92);border:1px solid var(--line,#1e2837);border-radius:8px;
+    padding:10px 14px;display:none;align-items:center;gap:12px;flex-wrap:wrap;
+    font-family:'Consolas',monospace;font-size:11.5px;color:var(--text,#e8ecf3);
+  }
+  .calib-panel.active{display:flex;}
+  .calib-panel select, .calib-panel input[type=text]{
+    background:var(--panel-2,#141b28);border:1px solid var(--line,#1e2837);color:var(--text,#e8ecf3);
+    border-radius:5px;padding:4px 7px;font-family:'Consolas',monospace;font-size:11px;
+  }
+  .calib-btn{
+    background:var(--panel-2,#141b28);border:1px solid var(--line,#1e2837);color:var(--text,#e8ecf3);
+    border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'Consolas',monospace;
+  }
+  .calib-btn.primary{border-color:#1a6f66;color:#2dd4bf;}
+  .calib-btn.danger{border-color:#7c3030;color:#f87171;}
+  .calib-hint{color:var(--text-dim,#8794a8);font-size:10.5px;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <div class="mark"></div>
+      <span class="name">IBVAP</span>
+      <span class="sub">Intelligent Border Video Analytics Platform · SIH26187</span>
+      <span class="team-badge">Team KavachX</span>
+    </div>
+    <div class="status-cluster">
+      <button class="audit-btn" id="btnAuditDemo" type="button">🔒 Audit Demo</button>
+      <button class="icon-btn" id="btnGridView" type="button" title="View multiple simulated camera feeds at once">⊞ Multi-Camera</button>
+      <button class="icon-btn danger" id="btnResetDb" type="button" title="Wipe all tracking data for a clean jury demo">Reset DB</button>
+      <a class="icon-btn" id="btnDbViewer" href="/db-viewer" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;">View Database</a>
+      <span id="apiBase">API: —</span>
+      <span><span class="dot" id="connDot"></span><span id="connLabel">Connecting…</span></span>
+      <span id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="feed-panel">
+      <div class="panel-head">
+        <span class="title" id="feedTitle">Live feed</span>
+        <div class="source-controls">
+          <button class="src-btn active" id="btnLive" type="button">Live simulation</button>
+          <label class="src-btn" id="btnUpload">
+            Upload &amp; replay video
+            <input type="file" id="videoFile" accept="video/*" hidden>
+          </label>
+          <span class="chip" id="replayProgress" style="display:none;"></span>
+          <button class="icon-btn" id="btnPause" type="button" title="Pause feed">Pause</button>
+          <button class="icon-btn" id="btnSound" type="button" title="Toggle alert sound">Sound</button>
+          <button class="icon-btn" id="btnCalibrate" type="button" title="Draw a virtual fence line or restricted zone on the live feed">Calibrate Zone</button>
+        </div>
+      </div>
+      <div class="feed-wrap">
+        <img id="feedImg" alt="Live analytics feed"/>
+        <canvas id="zoneCanvas"></canvas>
+        <div class="calib-panel" id="calibPanel">
+          <label>Mode:
+            <select id="calibMode">
+              <option value="line">Border line (fence)</option>
+              <option value="zone">Restricted zone (polygon)</option>
+            </select>
+          </label>
+          <span class="calib-hint" id="calibHint">Click 2 points on the feed to place the line.</span>
+          <input type="text" id="calibName" placeholder="Name (e.g. North Fence)" style="width:160px;" />
+          <button class="calib-btn" id="calibClear" type="button">Clear</button>
+          <button class="calib-btn primary" id="calibSave" type="button">Save to Backend</button>
+          <button class="calib-btn" id="calibTest" type="button" disabled
+            title="Save first -- this fires a real test alert against whatever was last saved">
+            Test This Line/Zone
+          </button>
+          <button class="calib-btn danger" id="calibCancel" type="button">Cancel</button>
+          <div id="calibTestResult" style="display:none;width:100%;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);"></div>
+        </div>
+        <div class="feed-empty" id="feedEmpty">Waiting for stream…</div>
+        <div class="paused-banner" id="pausedBanner">FEED PAUSED — stats still updating</div>
+        <div class="feed-hud">
+          <div class="chip">People · <b id="hudCount">0</b></div>
+          <div class="chip">Vehicles · <b id="hudVehicles">0</b></div>
+          <div class="chip" id="hudNightChip" style="display:none;color:var(--night);">Night mode active</div>
+          <div class="chip">Frame · <b id="hudFrame">0</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-panel">
+      <div class="stat">
+        <span class="label">Total alerts</span>
+        <span class="value" id="statTotal">0</span>
+        <span class="sub">this session</span>
+      </div>
+      <div class="stat">
+        <span class="label">Critical events</span>
+        <span class="value red" id="statCritical">0</span>
+        <span class="sub">unauthorized crossings</span>
+      </div>
+      <div class="stat">
+        <span class="label">Peak occupancy</span>
+        <span class="value amber" id="statPeak">0</span>
+        <span class="sub">people, single frame</span>
+      </div>
+      <div class="stat">
+        <span class="label">Session uptime</span>
+        <span class="value teal" id="statUptime">00:00</span>
+        <span class="sub">current connection</span>
+      </div>
+      <div class="stat">
+        <span class="label">Faces detected</span>
+        <span class="value" id="statFaces">0</span>
+        <span class="sub">unique persons</span>
+      </div>
+      <div class="stat">
+        <span class="label">Plates read</span>
+        <span class="value" id="statPlates">0</span>
+        <span class="sub">ANPR events</span>
+      </div>
+      <div class="stat">
+        <span class="label">Group / convoy</span>
+        <span class="value amber" id="statGroup">0</span>
+        <span class="sub">formation alerts</span>
+      </div>
+      <div class="stat">
+        <span class="label">Frames analyzed</span>
+        <span class="value teal" id="statFrames">0</span>
+        <span class="sub">this connection</span>
+      </div>
+    </section>
+
+    <section class="alerts-panel">
+      <div class="panel-head">
+        <span class="title">Alert feed</span>
+        <div class="tools">
+          <span id="alertCount" style="color:var(--text-dim);font-size:11px;">0 events</span>
+          <button class="icon-btn" id="btnExport" type="button" title="Export session report (JSON)">Export</button>
+          <button class="icon-btn" id="btnClear" type="button" title="Clear display (keeps server data)">Reset</button>
+        </div>
+      </div>
+      <div class="filter-row" id="filterRow">
+        <button class="filter-chip active" data-filter="all" type="button">All</button>
+        <button class="filter-chip" data-filter="critical" type="button">Critical</button>
+        <button class="filter-chip" data-filter="high" type="button">High</button>
+        <button class="filter-chip" data-filter="medium" type="button">Medium</button>
+      </div>
+      <canvas id="sparkline" width="360" height="36"></canvas>
+      <div class="alert-list" id="alertList">
+        <div class="alerts-empty">No alerts yet. Analytics engine is watching the feed.</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--red)"></i>Unauthorized crossing</span>
+        <span><i style="background:var(--orange)"></i>Group formation</span>
+        <span><i style="background:var(--amber)"></i>Loitering</span>
+        <span><i style="background:#9d6bff"></i>Erratic motion</span>
+        <span><i style="background:var(--night)"></i>Night-time movement</span>
+      </div>
+      <div class="events-strip">
+        <div class="panel-head" style="border-top:1px solid var(--line);border-bottom:none;">
+          <span class="title" style="font-size:12px;">Detection log</span>
+          <span style="color:var(--text-dim);font-size:10.5px;">faces &amp; ANPR</span>
+        </div>
+        <div id="eventsList" style="max-height:110px;overflow-y:auto;padding:0 12px 10px;">
+          <div class="alerts-empty" style="padding:8px 0;">No detections logged yet.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="grid-overlay" id="gridOverlay">
+  <div class="grid-head">
+    <h3 id="gridTitle">&#x229E; Multi-Camera Grid</h3>
+    <button class="modal-close" id="btnGridClose" type="button">&times;</button>
+  </div>
+  <div class="grid-cells" id="gridCells"></div>
+</div>
+
+<div class="modal-overlay" id="apiKeyGate" style="z-index:2000;">
+  <div class="modal-box" style="width:420px;">
+    <div class="modal-head">
+      <div><h3>&#x1F511; API Key Required</h3><div class="sub">Every /api/* route on this backend now requires one.</div></div>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-dim);font-size:12px;margin:0 0 12px;">
+        Ask whoever runs the server, or check the IBVAP_API_KEY environment
+        variable it was started with. This is stored only for this browser tab
+        (sessionStorage) -- not sent anywhere else.
+      </p>
+      <input type="password" id="apiKeyInput" placeholder="API key" autocomplete="off"
+        style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--panel-2);
+        border:1px solid var(--line);border-radius:6px;color:var(--text);
+        font-family:'Consolas',monospace;font-size:13px;" />
+      <button id="apiKeySubmit" class="demo-btn seed" style="margin-top:12px;width:100%;text-align:center;">
+        <span class="t">Connect</span>
+      </button>
+      <div id="apiKeyError" style="display:none;margin-top:10px;color:#f87171;font-size:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="auditModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <h3>🔒 Tamper-Evident Audit Trail — Live Demo</h3>
+        <div class="sub">Runs real SQL-level attacks against the live database, exactly as described in the technical briefing. Same code path as production, not a mockup.</div>
+      </div>
+      <button class="modal-close" id="btnAuditClose" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="verify-cards" id="verifyCards">
+        <div class="vcard"><div class="label">Overall</div><div class="value" id="vOverall">—</div><div class="detail" id="vOverallDetail">Click "Seed" to begin</div></div>
+        <div class="vcard"><div class="label">Hash Chain</div><div class="value" id="vChain">—</div><div class="detail" id="vChainDetail"></div></div>
+        <div class="vcard"><div class="label">Row Integrity</div><div class="value" id="vIntegrity">—</div><div class="detail" id="vIntegrityDetail"></div></div>
+      </div>
+
+      <div class="demo-actions">
+        <button class="demo-btn seed" id="btnSeed" type="button">
+          <span class="t">1 · Seed Clean Demo Data</span>
+          <span class="d">POST /api/audit/demo/seed</span>
+        </button>
+        <button class="demo-btn atk1" id="btnAttack1" type="button" disabled>
+          <span class="t">2 · Attack: Edit Visible Record</span>
+          <span class="d">POST /api/audit/demo/attack1</span>
+        </button>
+        <button class="demo-btn atk2" id="btnAttack2" type="button" disabled>
+          <span class="t">3 · Attack: Rewrite Audit Log + Fake Hash</span>
+          <span class="d">POST /api/audit/demo/attack2</span>
+        </button>
+      </div>
+
+      <div class="demo-log" id="demoLog">
+        <div class="entry"><span class="title">Ready.</span> Click "Seed Clean Demo Data" to load a known-clean dataset, then run either attack and watch the cards above update.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Same-origin by default -- works automatically whether this page is
+// opened directly as a local file (file://), served locally by the
+// backend itself (http://localhost:8000/), or hosted publicly
+// (https://your-app.onrender.com/): the scheme (ws vs wss, http vs
+// https) always matches how THIS page was loaded, so there's nothing to
+// configure per-deployment. The file:// case is the only one with no
+// origin to infer from, so it falls back to localhost:8000 for local dev.
+const isFileProtocol = window.location.protocol === 'file:';
+const API_HOST = isFileProtocol ? 'localhost:8000' : window.location.host;
+const WS_SCHEME = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const HTTP_SCHEME = window.location.protocol === 'https:' ? 'https' : 'http';
+const HTTP_BASE = `${HTTP_SCHEME}://${API_HOST}`;
+
+// ---- API key -------------------------------------------------------
+// Every /api/* route now requires one (see main.py's APIKeyMiddleware).
+// A function, not a fixed WS_URL constant, so a key entered AFTER page
+// load (via the gate below) is picked up by the very next call, and so
+// every reconnect (including the automatic one after a dropped
+// connection) uses the current key, not whatever was true at page load.
+let API_KEY = sessionStorage.getItem('ibvap_api_key') || '';
+function getWsUrl(camId = 'cam-demo'){
+  return `${WS_SCHEME}://${API_HOST}/api/ws/live/${camId}?api_key=${encodeURIComponent(API_KEY)}`;
+}
+
+// Global fetch override: every existing (and future) fetch() call in
+// this file that targets /api/... gets X-API-Key attached automatically
+// -- deliberately done once, here, instead of editing every individual
+// fetch() call site throughout the dashboard (there are a couple dozen),
+// which would be much easier to get wrong or miss one of.
+const _nativeFetch = window.fetch;
+window.fetch = function(input, init){
+  const url = typeof input === 'string' ? input : input.url;
+  if (url && url.includes('/api/')) {
+    init = init || {};
+    init.headers = Object.assign({}, init.headers, { 'X-API-Key': API_KEY });
+  }
+  return _nativeFetch(input, init);
+};
+
+document.getElementById('apiBase').textContent = 'API: ' + HTTP_BASE;
+
+// Tracks which camera_id the stats panels (alerts/events/summary) should
+// scope to. Without this, every poll would return alerts/events across
+// every session ever run against the database file -- which is exactly
+// the "stale plate read from an old demo run" confusion this fixes.
+let currentCameraId = 'cam-demo';
+
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
+}
+setInterval(tickClock, 1000); tickClock();
+
+// ---- session uptime ----
+let sessionStart = Date.now();
+function tickUptime(){
+  const secs = Math.floor((Date.now() - sessionStart) / 1000);
+  const m = String(Math.floor(secs / 60)).padStart(2, '0');
+  const s = String(secs % 60).padStart(2, '0');
+  document.getElementById('statUptime').textContent = `${m}:${s}`;
+}
+setInterval(tickUptime, 1000); tickUptime();
+
+let totalAlerts = 0, criticalAlerts = 0, groupAlerts = 0;
+const MAX_CARDS = 60;
+
+function fmtTime(ts){
+  // ts is a virtual-clock second offset OR unix time depending on source; render as mm:ss
+  const s = Math.max(0, Math.floor(ts));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ---- alert activity sparkline ----
+const SPARK_BUCKETS = 24;
+let sparkData = new Array(SPARK_BUCKETS).fill(0);
+const sparkCanvas = document.getElementById('sparkline');
+const sparkCtx = sparkCanvas.getContext('2d');
+
+function drawSparkline(){
+  const w = sparkCanvas.clientWidth || 360;
+  const h = sparkCanvas.height;
+  sparkCanvas.width = w;
+  sparkCtx.clearRect(0, 0, w, h);
+  const max = Math.max(1, ...sparkData);
+  const barW = w / SPARK_BUCKETS;
+  sparkData.forEach((count, i) => {
+    const barH = (count / max) * (h - 6);
+    const x = i * barW;
+    const y = h - barH;
+    sparkCtx.fillStyle = count > 0 ? 'rgba(224,168,64,0.75)' : 'rgba(30,40,55,0.6)';
+    sparkCtx.fillRect(x + 1, y, Math.max(1, barW - 2), barH || 1);
+  });
+}
+setInterval(() => {
+  sparkData.push(0);
+  sparkData.shift();
+  drawSparkline();
+}, 5000);
+drawSparkline();
+
+// ---- alert sound (synthesized beep, no external audio files) ----
+let soundEnabled = true;
+let audioCtx = null;
+function beep(freq, dur){
+  if (!soundEnabled) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  }catch(e){ /* audio not available in this context, fail silently */ }
+}
+document.getElementById('btnSound').addEventListener('click', (e) => {
+  soundEnabled = !soundEnabled;
+  e.currentTarget.textContent = soundEnabled ? 'Sound' : 'Muted';
+  e.currentTarget.classList.toggle('muted', !soundEnabled);
+});
+
+// ---- pause/resume feed (freezes the image only; stats keep updating) ----
+let feedPaused = false;
+document.getElementById('btnPause').addEventListener('click', (e) => {
+  feedPaused = !feedPaused;
+  e.currentTarget.textContent = feedPaused ? 'Resume' : 'Pause';
+  e.currentTarget.classList.toggle('paused', feedPaused);
+  document.getElementById('pausedBanner').style.display = feedPaused ? 'block' : 'none';
+});
+
+// ---- severity filter ----
+let currentFilter = 'all';
+function applyFilter(){
+  document.querySelectorAll('#alertList .alert-card').forEach(card => {
+    card.style.display = (currentFilter === 'all' || card.dataset.severity === currentFilter) ? '' : 'none';
+  });
+}
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.filter;
+    applyFilter();
+  });
+});
+
+function pushAlertCard(alert){
+  const list = document.getElementById('alertList');
+  const empty = list.querySelector('.alerts-empty');
+  if (empty) empty.remove();
+
+  const card = document.createElement('div');
+  card.className = `alert-card ${alert.severity}`;
+  card.dataset.severity = alert.severity;
+  // alert.id is only present when this came from a source that carries
+  // the database row id (currently: the audit-demo flows and any future
+  // payload that adds it). The live WebSocket feed doesn't include it
+  // today, so the Acknowledge control gracefully omits itself rather
+  // than pointing at nothing -- see the note in the delivery message
+  // about wiring this all the way through pipeline.py.
+  const ackControl = (alert.id !== undefined && alert.id !== null)
+    ? `<button class="ack-btn" data-alert-id="${alert.id}" type="button">Acknowledge</button>`
+    : '';
+  // Evidence link only appears when this alert actually has a snapshot
+  // (not every alert does -- e.g. the audit-demo's seeded alerts never
+  // will, by design). Both links carry the API key as a query param
+  // since they open in a new tab, not via fetch() -- the global fetch
+  // override that injects X-API-Key as a header doesn't apply to a
+  // plain window.open()/<a> navigation.
+  const evidenceControl = (alert.id !== undefined && alert.id !== null && alert.snapshot_hash)
+    ? `<a class="evidence-btn" href="${HTTP_BASE}/api/alerts/${alert.id}/snapshot?api_key=${encodeURIComponent(API_KEY)}" target="_blank" rel="noopener">View Evidence</a>`
+    : '';
+  const reportControl = (alert.id !== undefined && alert.id !== null)
+    ? `<a class="report-btn" href="${HTTP_BASE}/api/alerts/${alert.id}/report?api_key=${encodeURIComponent(API_KEY)}" target="_blank" rel="noopener">Report</a>`
+    : '';
+  card.dataset.alertId = alert.id ?? '';
+  card.innerHTML = `
+    <div class="row1">
+      <span class="sev-tag ${alert.severity}">${alert.severity}</span>
+      <span class="time">t+${fmtTime(alert.timestamp)}</span>
+    </div>
+    <div class="msg">${alert.message}</div>
+    <div class="meta">
+      <span>${alert.alert_type.replace('_',' ')} · track ${alert.track_ids.join(', ')}</span>
+      <span style="display:flex;gap:5px;">${evidenceControl}${reportControl}${ackControl}</span>
+    </div>
+  `;
+  const ackBtn = card.querySelector('.ack-btn');
+  if (ackBtn) {
+    ackBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = ackBtn.dataset.alertId;
+      ackBtn.disabled = true;
+      ackBtn.textContent = '…';
+      try {
+        const res = await fetch(`${HTTP_BASE}/api/alerts/${id}/acknowledge`, { method: 'POST' });
+        if (res.ok) {
+          card.classList.add('acked');
+          ackBtn.outerHTML = '<span class="ack-tag">✓ Acknowledged</span>';
+        } else {
+          ackBtn.disabled = false;
+          ackBtn.textContent = 'Acknowledge';
+        }
+      } catch (err) {
+        ackBtn.disabled = false;
+        ackBtn.textContent = 'Acknowledge';
+      }
+    });
+  }
+  if (currentFilter !== 'all' && alert.severity !== currentFilter) card.style.display = 'none';
+  list.prepend(card);
+  while (list.children.length > MAX_CARDS) list.removeChild(list.lastChild);
+
+  totalAlerts += 1;
+  if (alert.severity === 'critical') criticalAlerts += 1;
+  if (alert.alert_type === 'group_formation') groupAlerts += 1;
+  document.getElementById('statTotal').textContent = totalAlerts;
+  document.getElementById('statCritical').textContent = criticalAlerts;
+  document.getElementById('statGroup').textContent = groupAlerts;
+  document.getElementById('alertCount').textContent = `${totalAlerts} events`;
+
+  sparkData[SPARK_BUCKETS - 1] += 1;
+  drawSparkline();
+
+  if (alert.severity === 'critical') beep(1046, 0.18);
+  else if (alert.severity === 'high') beep(660, 0.12);
+}
+
+function connect(url, isReplay){
+  if (currentWs) { currentWs.onclose = null; currentWs.close(); }
+  const ws = new WebSocket(url);
+  currentWs = ws;
+  currentFeedUrl = url;  // so Multi-Camera can show THIS feed, not just fixed demo cameras
+  currentFeedIsReplay = isReplay;
+  sessionStart = Date.now();
+  const dot = document.getElementById('connDot');
+  const label = document.getElementById('connLabel');
+
+  ws.onopen = () => {
+    dot.className = 'dot live';
+    label.textContent = isReplay ? 'Replaying' : 'Live';
+    document.getElementById('feedEmpty').style.display = 'none';
+  };
+
+  ws.onmessage = (evt) => {
+    // Guards against a real, previously-undiscovered bug: if this socket
+    // was just superseded by a manual switch (e.g. Live -> Replay), it can
+    // still have messages in flight before its close handshake completes.
+    // Without this check, those late messages briefly overwrite the new
+    // socket's display with stale content -- onclose already had this
+    // guard, onmessage did not.
+    if (ws !== currentWs) return;
+
+    const data = JSON.parse(evt.data);
+
+    if (data.type === 'error') {
+      label.textContent = 'Error';
+      document.getElementById('feedEmpty').textContent = data.message || 'Replay error';
+      document.getElementById('feedEmpty').style.display = 'block';
+      return;
+    }
+    if (data.type === 'done') {
+      label.textContent = 'Replay finished';
+      document.getElementById('replayProgress').textContent = 'Finished — switch back to Live, or upload another clip';
+      return;
+    }
+
+    if (!feedPaused) {
+      document.getElementById('feedImg').src = 'data:image/jpeg;base64,' + data.jpeg_b64;
+    }
+    document.getElementById('hudCount').textContent = data.people_count;
+    document.getElementById('hudVehicles').textContent = data.vehicle_count;
+    document.getElementById('hudFrame').textContent = data.frame_index;
+    document.getElementById('statFrames').textContent = data.frame_index;
+    document.getElementById('hudNightChip').style.display = data.night_mode ? 'block' : 'none';
+    (data.alerts || []).forEach(pushAlertCard);
+
+    if (isReplay && data.total_frames) {
+      document.getElementById('replayProgress').textContent =
+        `Frame ${data.frame_index} / ${data.total_frames}`;
+    }
+  };
+
+  ws.onclose = () => {
+    if (ws !== currentWs) return; // superseded by a manual switch, not a real disconnect
+    dot.className = 'dot down';
+    label.textContent = 'Reconnecting…';
+    if (!isReplay) setTimeout(() => connect(getWsUrl(), false), 1500);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function resetStatsDisplay(){
+  totalAlerts = 0;
+  criticalAlerts = 0;
+  groupAlerts = 0;
+  seenEventIds = new Set();
+  facesTotal = 0;
+  platesTotal = 0;
+  sparkData = new Array(SPARK_BUCKETS).fill(0);
+  drawSparkline();
+  document.getElementById('statTotal').textContent = '0';
+  document.getElementById('statCritical').textContent = '0';
+  document.getElementById('statPeak').textContent = '0';
+  document.getElementById('statGroup').textContent = '0';
+  document.getElementById('statFaces').textContent = '0';
+  document.getElementById('statPlates').textContent = '0';
+  document.getElementById('statFrames').textContent = '0';
+  document.getElementById('alertCount').textContent = '0 events';
+  document.getElementById('alertList').innerHTML =
+    '<div class="alerts-empty">No alerts yet. Analytics engine is watching the feed.</div>';
+  document.getElementById('eventsList').innerHTML =
+    '<div class="alerts-empty" style="padding:8px 0;">No detections logged yet.</div>';
+}
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  resetStatsDisplay();
+});
+
+document.getElementById('btnExport').addEventListener('click', async () => {
+  const btn = document.getElementById('btnExport');
+  const original = btn.textContent;
+  btn.textContent = '…';
+  try{
+    const [alertsRes, eventsRes, summaryRes] = await Promise.all([
+      fetch(`${HTTP_BASE}/api/alerts?limit=500&camera_id=${encodeURIComponent(currentCameraId)}`),
+      fetch(`${HTTP_BASE}/api/events?limit=500&camera_id=${encodeURIComponent(currentCameraId)}`),
+      fetch(`${HTTP_BASE}/api/analytics/summary?camera_id=${encodeURIComponent(currentCameraId)}`),
+    ]);
+    const report = {
+      team: 'KavachX',
+      project: 'IBVAP -- Intelligent Border Video Analytics Platform',
+      problem_statement: 'SIH26187',
+      exported_at: new Date().toISOString(),
+      camera_id: currentCameraId,
+      summary: await summaryRes.json(),
+      alerts: await alertsRes.json(),
+      events: await eventsRes.json(),
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ibvap-report-${currentCameraId}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }catch(e){
+    alert('Export failed: ' + e.message);
+  }finally{
+    btn.textContent = original;
+  }
+});
+
+document.getElementById('btnResetDb').addEventListener('click', async () => {
+  const sure = confirm(
+    'Reset DB will permanently delete ALL alerts, events, and audit log ' +
+    'entries from sentinelgrid.db -- including anything from earlier ' +
+    'testing. This cannot be undone. Use this right before a jury demo ' +
+    'so DB Browser only shows current activity.\n\nContinue?'
+  );
+  if (!sure) return;
+  const btn = document.getElementById('btnResetDb');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = '…';
+  try {
+    const res = await fetch(`${HTTP_BASE}/api/data/reset`, { method: 'POST' });
+    if (res.ok) {
+      resetStatsDisplay();
+      btn.textContent = 'Done';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    } else {
+      alert('Reset failed: ' + (await res.text()));
+      btn.textContent = original;
+    }
+  } catch (e) {
+    alert('Reset failed: ' + e.message);
+    btn.textContent = original;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function switchToLive(){
+  document.getElementById('btnLive').classList.add('active');
+  document.getElementById('btnUpload').classList.remove('active');
+  document.getElementById('feedTitle').textContent = 'Live feed';
+  document.getElementById('replayProgress').style.display = 'none';
+  currentCameraId = 'cam-demo';
+  resetStatsDisplay();
+  connect(getWsUrl(), false);
+}
+
+async function switchToReplay(file){
+  const uploadBtn = document.getElementById('btnUpload');
+  uploadBtn.classList.add('busy');
+  document.getElementById('feedTitle').textContent = `Replay — ${file.name}`;
+  document.getElementById('feedEmpty').textContent = 'Uploading and starting replay…';
+  document.getElementById('feedEmpty').style.display = 'block';
+
+  // A fresh camera_id per upload -- not a fixed "cam-replay" -- so two
+  // different videos replayed in the same session don't mix each other's
+  // alerts/plate-reads either.
+  const cameraId = `cam-replay-${Date.now()}`;
+
+  try{
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${HTTP_BASE}/api/replay/start?camera_id=${cameraId}`, {
+      method: 'POST', body: form,
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(body || `HTTP ${res.status}`);
+    }
+    const { session_id, total_frames } = await res.json();
+
+    currentCameraId = cameraId;
+    resetStatsDisplay();
+    document.getElementById('btnLive').classList.remove('active');
+    uploadBtn.classList.add('active');
+    document.getElementById('replayProgress').style.display = 'inline-block';
+    document.getElementById('replayProgress').textContent = `Frame 0 / ${total_frames}`;
+
+    connect(`${WS_SCHEME}://${API_HOST}/api/ws/replay/${session_id}?api_key=${encodeURIComponent(API_KEY)}`, true);
+  }catch(e){
+    document.getElementById('feedEmpty').textContent = 'Replay failed to start: ' + e.message;
+  }finally{
+    uploadBtn.classList.remove('busy');
+  }
+}
+
+let currentWs = null;
+// Whatever connect() last opened -- live simulation OR an active replay.
+// Lets the Multi-Camera grid show your ACTUAL current feed as one panel,
+// instead of only ever showing 4 fixed simulated demo cameras with no
+// relation to whatever you're actually looking at.
+let currentFeedUrl = null;
+let currentFeedIsReplay = false;
+document.getElementById('btnLive').addEventListener('click', switchToLive);
+document.getElementById('videoFile').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) switchToReplay(e.target.files[0]);
+  e.target.value = ''; // allow re-selecting the same file later
+});
+
+async function pollSummary(){
+  try{
+    const res = await fetch(`${HTTP_BASE}/api/analytics/summary?camera_id=${encodeURIComponent(currentCameraId)}`);
+    const s = await res.json();
+    document.getElementById('statPeak').textContent = s.peak_occupancy || 0;
+  }catch(e){ /* backend may still be starting */ }
+}
+
+function eventLabel(ev){
+  if (ev.event_type === 'anpr_read') return `Plate read — ${ev.details.split(': ').pop()}`;
+  if (ev.event_type === 'face_detected') return ev.details;
+  return ev.details;
+}
+
+// Cumulative faces/plates counts, deduped by event id so re-polling the
+// same recent window doesn't double-count.
+let seenEventIds = new Set();
+let facesTotal = 0, platesTotal = 0;
+
+async function pollEvents(){
+  try{
+    const res = await fetch(`${HTTP_BASE}/api/events?limit=8&camera_id=${encodeURIComponent(currentCameraId)}`);
+    const events = await res.json();
+
+    events.forEach(ev => {
+      if (seenEventIds.has(ev.id)) return;
+      seenEventIds.add(ev.id);
+      if (ev.event_type === 'face_detected') facesTotal += 1;
+      if (ev.event_type === 'anpr_read') platesTotal += 1;
+    });
+    document.getElementById('statFaces').textContent = facesTotal;
+    document.getElementById('statPlates').textContent = platesTotal;
+
+    if (!events.length) return;
+    const list = document.getElementById('eventsList');
+    list.innerHTML = '';
+    events.forEach(ev => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:5px 0;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--text-dim);';
+      row.innerHTML = `<span style="color:var(--text);">${eventLabel(ev)}</span>`;
+      list.appendChild(row);
+    });
+  }catch(e){ /* backend may still be starting */ }
+}
+
+function initDashboard(){
+  setInterval(pollSummary, 4000);
+  setInterval(pollEvents, 3000);
+  window.addEventListener('resize', drawSparkline);
+
+  connect(getWsUrl(), false);
+  pollSummary();
+  pollEvents();
+}
+
+// ---- API key gate ---------------------------------------------------
+// Everything above this point is safe to run immediately regardless of
+// whether a key is set yet (function/listener definitions only -- none
+// of them make a network call just by being defined). Only the actual
+// bootstrap calls above needed gating.
+function startWithKey(key){
+  API_KEY = key;
+  sessionStorage.setItem('ibvap_api_key', key);
+  document.getElementById('apiKeyGate').classList.remove('open');
+  initDashboard();
+}
+async function tryKey(key){
+  const errEl = document.getElementById('apiKeyError');
+  const btn = document.getElementById('apiKeySubmit');
+  btn.disabled = true;
+  errEl.style.display = 'none';
+  // Validate against the real server BEFORE dismissing the gate --
+  // otherwise a wrong key just silently hides the prompt and leaves the
+  // dashboard stuck reconnecting forever with no explanation.
+  API_KEY = key; // fetch override reads this directly, so set it before probing
+  try {
+    const res = await fetch(`${HTTP_BASE}/api/audit/verify`);
+    if (res.status === 401) {
+      errEl.textContent = 'Incorrect API key. Try again.';
+      errEl.style.display = 'block';
+      API_KEY = '';
+      btn.disabled = false;
+      return;
+    }
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server to verify the key. Is it running?';
+    errEl.style.display = 'block';
+    API_KEY = '';
+    btn.disabled = false;
+    return;
+  }
+  btn.disabled = false;
+  startWithKey(key);
+}
+document.getElementById('apiKeySubmit').addEventListener('click', () => {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (val) tryKey(val);
+});
+document.getElementById('apiKeyInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('apiKeySubmit').click();
+});
+
+if (API_KEY) {
+  document.getElementById('apiKeyGate').classList.add('open');
+  document.getElementById('apiKeyInput').value = API_KEY;
+  tryKey(API_KEY);
+} else {
+  document.getElementById('apiKeyGate').classList.add('open');
+  document.getElementById('apiKeyInput').focus();
+}
+
+// ---- multi-camera grid view ---------------------------------------
+// Deliberately does NOT reuse connect()/the single-feed DOM ids for its
+// own sockets -- entirely separate state, so nothing here can affect the
+// main dashboard's live feed. The backend already supports this for
+// free: get_session(camera_id) in main.py creates one independent
+// CameraSession per camera_id, so opening several WebSocket connections
+// at once just works, no backend change needed.
+//
+// The first panel shows YOUR actual current feed (whatever connect()
+// last opened -- live simulation or an active replay), reusing that
+// exact URL rather than reconnecting to a fixed demo camera_id. This
+// used to always show 4 unrelated simulated cameras regardless of what
+// you were doing, which was a real, confusing gap for anyone testing a
+// real uploaded video and then opening this view expecting to see it
+// represented. The other 3 panels are honestly labeled as demo/simulated
+// cameras -- they still demonstrate multi-site scale, just not by
+// pretending to be your video.
+const DEMO_GRID_CAMERAS = ['cam-grid-demo-1', 'cam-grid-demo-2', 'cam-grid-demo-3'];
+let gridSockets = [];
+
+function gridPanels(){
+  const panels = [];
+  if (currentFeedUrl) {
+    panels.push({
+      key: 'current',
+      label: currentFeedIsReplay ? `${currentCameraId} (your replay)` : `${currentCameraId} (your live feed)`,
+      url: currentFeedUrl,
+    });
+  }
+  const demoSlotsNeeded = currentFeedUrl ? 3 : 4;
+  DEMO_GRID_CAMERAS.slice(0, demoSlotsNeeded).forEach((camId) => {
+    panels.push({ key: camId, label: `${camId} (demo)`, url: getWsUrl(camId) });
+  });
+  return panels;
+}
+
+function buildGridCells(panels){
+  const wrap = document.getElementById('gridCells');
+  wrap.innerHTML = '';
+  panels.forEach(({ key, label }) => {
+    const cell = document.createElement('div');
+    cell.className = 'grid-cell';
+    cell.innerHTML = `
+      <div class="gc-head">
+        <span class="gc-name"><span class="gc-dot" id="gcDot-${key}"></span>${label}</span>
+        <span class="gc-stats" id="gcStats-${key}">People 0 \u00b7 Vehicles 0</span>
+      </div>
+      <div class="gc-img-wrap">
+        <img id="gcImg-${key}" style="display:none;" />
+        <span class="gc-placeholder" id="gcPlaceholder-${key}">connecting\u2026</span>
+      </div>`;
+    wrap.appendChild(cell);
+  });
+}
+
+function connectGridCamera(key, url){
+  const ws = new WebSocket(url);
+  ws.onmessage = (evt) => {
+    const data = JSON.parse(evt.data);
+    if (data.type !== 'frame') return;
+    const img = document.getElementById(`gcImg-${key}`);
+    const placeholder = document.getElementById(`gcPlaceholder-${key}`);
+    const dot = document.getElementById(`gcDot-${key}`);
+    const stats = document.getElementById(`gcStats-${key}`);
+    if (!img) return; // grid was closed while a message was in flight
+    img.src = `data:image/jpeg;base64,${data.jpeg_b64}`;
+    img.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+    if (dot) dot.classList.add('live');
+    if (stats) stats.textContent = `People ${data.people_count} \u00b7 Vehicles ${data.vehicle_count}`;
+  };
+  ws.onclose = () => {
+    const dot = document.getElementById(`gcDot-${key}`);
+    if (dot) dot.classList.remove('live');
+  };
+  return ws;
+}
+
+function openGridView(){
+  const panels = gridPanels();
+  buildGridCells(panels);
+  document.getElementById('gridTitle').innerHTML = currentFeedUrl
+    ? '&#x229E; Multi-Camera Grid &mdash; your current feed + 3 simulated demo cameras'
+    : '&#x229E; Multi-Camera Grid &mdash; 4 independent simulated feeds';
+  document.getElementById('gridOverlay').classList.add('open');
+  gridSockets = panels.map(({ key, url }) => connectGridCamera(key, url));
+}
+
+function closeGridView(){
+  document.getElementById('gridOverlay').classList.remove('open');
+  gridSockets.forEach((ws) => { ws.onclose = null; ws.close(); });
+  gridSockets = [];
+}
+
+document.getElementById('btnGridView').addEventListener('click', openGridView);
+document.getElementById('btnGridClose').addEventListener('click', closeGridView);
+
+// ---- zone / line calibration ---------------------------------------
+// Every click has to be rescaled from "pixels on my screen" to "pixels
+// in the actual video frame" before it means anything to the backend's
+// zone/line geometry. This used to hardcode 960x540 -- correct for the
+// live simulation, but WRONG for a replay of a real uploaded video at
+// any other resolution (which is most of them), producing garbled
+// coordinates. Reading the current <img>'s own naturalWidth/naturalHeight
+// instead means this is always correct for whatever's actually on
+// screen -- live simulation or a real video of any size.
+function currentFrameSize(){
+  const img = document.getElementById('feedImg');
+  return [img.naturalWidth || 960, img.naturalHeight || 540];
+}
+let calibActive = false;
+let calibPoints = [];
+
+function calibCanvas(){ return document.getElementById('zoneCanvas'); }
+
+function toFrameCoords(clientX, clientY){
+  const img = document.getElementById('feedImg');
+  const rect = img.getBoundingClientRect();
+  const [frameW, frameH] = currentFrameSize();
+  const x = (clientX - rect.left) / rect.width * frameW;
+  const y = (clientY - rect.top) / rect.height * frameH;
+  return [Math.round(x), Math.round(y)];
+}
+
+function redrawCalibration(){
+  const canvas = calibCanvas();
+  const img = document.getElementById('feedImg');
+  const wrap = img.parentElement;
+  const imgRect = img.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  // Explicitly position the canvas to exactly cover the IMAGE's box, not
+  // just the feed-wrap container -- inset:0 alone fills the whole
+  // container, which is wider/taller than the image whenever the video
+  // is letterboxed, and would make the preview drawing visually drift
+  // away from the actual pixels it corresponds to. The saved click data
+  // was already correct either way (it's computed from imgRect
+  // directly, not from the canvas's box) -- this only fixes what the
+  // user visually sees while placing points.
+  canvas.style.left = (imgRect.left - wrapRect.left) + 'px';
+  canvas.style.top = (imgRect.top - wrapRect.top) + 'px';
+  canvas.style.width = imgRect.width + 'px';
+  canvas.style.height = imgRect.height + 'px';
+  canvas.width = imgRect.width;
+  canvas.height = imgRect.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (calibPoints.length === 0) return;
+
+  const [frameW, frameH] = currentFrameSize();
+  const toScreen = ([fx, fy]) => [fx / frameW * canvas.width, fy / frameH * canvas.height];
+  const mode = document.getElementById('calibMode').value;
+
+  ctx.strokeStyle = mode === 'line' ? '#f87171' : '#2dd4bf';
+  ctx.fillStyle = ctx.strokeStyle;
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  calibPoints.forEach((p, i) => {
+    const [sx, sy] = toScreen(p);
+    if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+  });
+  if (mode === 'zone' && calibPoints.length > 2) ctx.closePath();
+  ctx.stroke();
+
+  calibPoints.forEach((p) => {
+    const [sx, sy] = toScreen(p);
+    ctx.beginPath();
+    ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function updateCalibHint(){
+  const mode = document.getElementById('calibMode').value;
+  const hint = document.getElementById('calibHint');
+  if (mode === 'line') {
+    hint.textContent = calibPoints.length >= 2
+      ? 'Line placed (2 points). Name it and Save, or Clear to redo.'
+      : `Click 2 points on the feed to place the line (${calibPoints.length}/2).`;
+  } else {
+    hint.textContent = `Click 3+ points to outline the zone, then Save (${calibPoints.length} placed).`;
+  }
+}
+
+function enterCalibMode(){
+  calibActive = true;
+  calibPoints = [];
+  document.getElementById('zoneCanvas').classList.add('active');
+  document.getElementById('calibPanel').classList.add('active');
+  document.getElementById('calibTest').disabled = true;
+  document.getElementById('calibTestResult').style.display = 'none';
+  updateCalibHint();
+  redrawCalibration();
+}
+function exitCalibMode(){
+  calibActive = false;
+  calibPoints = [];
+  document.getElementById('zoneCanvas').classList.remove('active');
+  document.getElementById('calibPanel').classList.remove('active');
+  document.getElementById('calibTestResult').style.display = 'none';
+}
+
+document.getElementById('btnCalibrate').addEventListener('click', () => {
+  if (calibActive) exitCalibMode(); else enterCalibMode();
+});
+document.getElementById('calibCancel').addEventListener('click', exitCalibMode);
+document.getElementById('calibClear').addEventListener('click', () => {
+  calibPoints = [];
+  updateCalibHint();
+  redrawCalibration();
+});
+document.getElementById('calibMode').addEventListener('change', () => {
+  calibPoints = [];
+  updateCalibHint();
+  redrawCalibration();
+});
+window.addEventListener('resize', () => { if (calibActive) redrawCalibration(); });
+
+calibCanvas().addEventListener('click', (e) => {
+  const mode = document.getElementById('calibMode').value;
+  if (mode === 'line' && calibPoints.length >= 2) return; // line is exactly 2 points
+  const rect = calibCanvas().getBoundingClientRect();
+  calibPoints.push(toFrameCoords(e.clientX, e.clientY));
+  updateCalibHint();
+  redrawCalibration();
+});
+
+document.getElementById('calibSave').addEventListener('click', async () => {
+  const mode = document.getElementById('calibMode').value;
+  const name = document.getElementById('calibName').value.trim() || (mode === 'line' ? 'Border Line' : 'Restricted Zone');
+  const btn = document.getElementById('calibSave');
+
+  let body;
+  if (mode === 'line') {
+    if (calibPoints.length !== 2) { alert('Place exactly 2 points for a line first.'); return; }
+    body = { lines: [{ name, p1: calibPoints[0], p2: calibPoints[1], unauthorized_side: 'b_to_a' }] };
+  } else {
+    if (calibPoints.length < 3) { alert('Place at least 3 points for a zone first.'); return; }
+    body = { zones: [{ name, polygon: calibPoints, zone_type: 'restricted' }] };
+  }
+
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = 'Saving\u2026';
+  try {
+    const res = await fetch(`${HTTP_BASE}/api/zones/${encodeURIComponent(currentCameraId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      btn.textContent = `Saved (${data.zones} zone(s), ${data.lines} line(s))`;
+      // Deliberately does NOT auto-close the panel anymore -- the Test
+      // button below needs it to stay open so you can immediately verify
+      // the just-saved geometry actually drives an alert, rather than
+      // having to reopen calibration mode separately.
+      document.getElementById('calibTest').disabled = false;
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1400);
+    } else {
+      alert('Save failed: ' + (await res.text()));
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('calibTest').addEventListener('click', async () => {
+  const mode = document.getElementById('calibMode').value;
+  const btn = document.getElementById('calibTest');
+  const resultBox = document.getElementById('calibTestResult');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = 'Testing\u2026';
+  resultBox.style.display = 'none';
+
+  try {
+    const res = await fetch(
+      `${HTTP_BASE}/api/zones/${encodeURIComponent(currentCameraId)}/test?kind=${mode}`,
+      { method: 'POST' },
+    );
+    // Read as text first, then parse -- if the server ever returns
+    // something that isn't JSON (a proxy error page, an unhandled crash
+    // slipping past the backend's own error handling), this shows the
+    // actual response instead of the browser's cryptic
+    // "Unexpected token" parse error, which is what happened before this
+    // fix and gave no clue what had actually gone wrong.
+    const raw = await res.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      resultBox.style.display = 'block';
+      resultBox.style.borderColor = '#7c3030';
+      resultBox.innerHTML = `<span style="color:#f87171;">Server returned a non-JSON response (status ${res.status}). ` +
+        `First 200 chars: ${raw.slice(0, 200).replace(/</g, '&lt;')}</span>`;
+      return;
+    }
+    resultBox.style.display = 'block';
+    if (!res.ok) {
+      resultBox.style.borderColor = '#7c3030';
+      resultBox.innerHTML = `<span style="color:#f87171;">${data.detail || 'Test failed.'}</span>`;
+    } else if (data.status === 'no_alert') {
+      resultBox.style.borderColor = '#7c5f2e';
+      resultBox.innerHTML = `<span style="color:var(--amber);">${data.message}</span>`;
+    } else {
+      resultBox.style.borderColor = '#1a6f66';
+      const msg = data.alerts.map(a => `<b>${a.severity}</b>: ${a.message}`).join('<br>');
+      resultBox.innerHTML =
+        `<span style="color:var(--teal);">\u2713 Real alert generated against "${data.target_name}" -- now showing in Alert Feed:</span><br>${msg}`;
+      // The test endpoint saves this alert exactly like a real detection
+      // does, but it's created via a direct API call, not through the
+      // live frame loop -- so it never passes through the WebSocket
+      // stream that normally pushes new alerts into the feed. Without
+      // this, the alert would be correctly saved (visible in the total
+      // counts, Export, a fresh page load) but invisibly absent from the
+      // live panel you're actually looking at, which is confusing.
+      // Pushing it here, using the exact same render path a real
+      // WebSocket-delivered alert uses, is what makes it show up live.
+      data.alerts.forEach(a => pushAlertCard(a));
+    }
+  } catch (err) {
+    resultBox.style.display = 'block';
+    resultBox.style.borderColor = '#7c3030';
+    resultBox.innerHTML = `<span style="color:#f87171;">Test failed: ${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+});
+
+// ---- tamper-evidence live demo -----------------------------------------
+const auditModal = document.getElementById('auditModal');
+const demoLog = document.getElementById('demoLog');
+let auditSeeded = false;
+
+document.getElementById('btnAuditDemo').addEventListener('click', () => {
+  auditModal.classList.add('open');
+});
+document.getElementById('btnAuditClose').addEventListener('click', () => {
+  auditModal.classList.remove('open');
+});
+auditModal.addEventListener('click', (e) => {
+  if (e.target === auditModal) auditModal.classList.remove('open');
+});
+
+function logEntry(title, bodyObj) {
+  const el = document.createElement('div');
+  el.className = 'entry';
+  const ts = new Date().toLocaleTimeString('en-GB');
+  el.innerHTML = `<span class="ts">${ts}</span> — <span class="title">${title}</span>` +
+    (bodyObj ? `<pre>${JSON.stringify(bodyObj, null, 2)}</pre>` : '');
+  demoLog.prepend(el);
+}
+
+function renderVerify(v) {
+  const vOverall = document.getElementById('vOverall');
+  const vChain = document.getElementById('vChain');
+  const vIntegrity = document.getElementById('vIntegrity');
+  vOverall.textContent = v.ok ? 'VERIFIED' : 'TAMPERED';
+  vOverall.className = 'value ' + (v.ok ? 'ok' : 'bad');
+  document.getElementById('vOverallDetail').textContent = `ok: ${v.ok}`;
+
+  vChain.textContent = v.chain.chain_intact ? 'INTACT' : 'BROKEN';
+  vChain.className = 'value ' + (v.chain.chain_intact ? 'ok' : 'bad');
+  document.getElementById('vChainDetail').textContent =
+    `records_checked: ${v.chain.records_checked} · broken_at_id: ${v.chain.broken_at_id ?? 'null'}`;
+
+  const flagged = v.integrity.tampered_alert_ids.length + v.integrity.tampered_event_ids.length;
+  vIntegrity.textContent = `${flagged} FLAGGED`;
+  vIntegrity.className = 'value ' + (flagged === 0 ? 'ok' : 'bad');
+  document.getElementById('vIntegrityDetail').textContent =
+    `tampered_alert_ids: [${v.integrity.tampered_alert_ids.join(', ')}]`;
+}
+
+async function refreshVerify() {
+  const res = await fetch(`${HTTP_BASE}/api/audit/verify`);
+  const v = await res.json();
+  renderVerify(v);
+  return v;
+}
+
+document.getElementById('btnSeed').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${HTTP_BASE}/api/audit/demo/seed`, { method: 'POST' });
+    const data = await res.json();
+    logEntry(`Seeded ${data.seeded_alerts.length} alerts + ${data.seeded_events.length} events (clean)`, data);
+    const v = await refreshVerify();
+    logEntry('Verified after seed', v);
+    auditSeeded = true;
+    document.getElementById('btnAttack1').disabled = false;
+    document.getElementById('btnAttack2').disabled = false;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btnAttack1').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  const res = await fetch(`${HTTP_BASE}/api/audit/demo/attack1`, { method: 'POST' });
+  const data = await res.json();
+  logEntry('Attack 1 executed — edited alerts table directly, audit_log untouched', data);
+  const v = await refreshVerify();
+  logEntry('Verified after Attack 1', v);
+  btn.disabled = false;
+});
+
+document.getElementById('btnAttack2').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  const res = await fetch(`${HTTP_BASE}/api/audit/demo/attack2`, { method: 'POST' });
+  const data = await res.json();
+  logEntry('Attack 2 executed — rewrote audit_log payload + recomputed its own hash', data);
+  const v = await refreshVerify();
+  logEntry('Verified after Attack 2', v);
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
