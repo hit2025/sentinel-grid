@@ -77,7 +77,6 @@ sentinel-grid/
 │   ├── index.html             operator dashboard (single file, no build step)
 │   └── db_viewer.html         read-only database viewer
 ├── docs/
-│   ├── judge_pitch.md         pitch and demo script
 │   └── RENDER_DEPLOYMENT.md   hosting guide
 ├── render.yaml                Render blueprint
 └── docker-compose.yml
